@@ -42,6 +42,7 @@
   tricg_solver = TricgSolver(m, n, Vector{Float64})
   trimr_solver = TrimrSolver(m, n, Vector{Float64})
   gpmr_solver = GpmrSolver(n, m, mem, Vector{Float64})
+  usymlqr_solver = UsymlqrSolver(n, m, Vector{Float64})
   
   for i = 1 : 3
     A  = i * A
@@ -247,6 +248,13 @@
     @test issolved(solver)
 
     solver = solve!(gpmr_solver, Ao, Au, b, c)
+    @test statistics(solver) === solver.stats
+    @test solution(solver, 1) === solver.x
+    @test solution(solver, 2) === solver.y
+    @test nsolution(solver) == 2
+    @test issolved(solver)
+
+    solver = solve!(usymlqr_solver, Ao, b, c)
     @test statistics(solver) === solver.stats
     @test solution(solver, 1) === solver.x
     @test solution(solver, 2) === solver.y
@@ -1171,6 +1179,34 @@
     Aresiduals: []
     κ₂(A): []
     status: solution good enough given atol and rtol"""
+
+    io = IOBuffer()
+    show(io, usymlqr_solver)
+    showed = String(take!(io))
+    expected = """
+    ┌────────────────────┬──────────────────────────┬──────────────────┐
+    │       UsymlqrSolver│        Precision: Float64│ Architecture: CPU│
+    ├────────────────────┼──────────────────────────┼──────────────────┤
+    │           Attribute│                      Type│              Size│
+    ├────────────────────┼──────────────────────────┼──────────────────┤
+    │                   x│           Vector{Float64}│                64│
+    │                   y│           Vector{Float64}│                32│
+    │             M⁻¹vₖ₋₁│           Vector{Float64}│                64│
+    │               M⁻¹vₖ│           Vector{Float64}│                64│
+    │             N⁻¹uₖ₋₁│           Vector{Float64}│                32│
+    │               N⁻¹uₖ│           Vector{Float64}│                32│
+    │                   p│           Vector{Float64}│                32│
+    │                   q│           Vector{Float64}│                64│
+    │                  vₖ│           Vector{Float64}│                 0│
+    │                  uₖ│           Vector{Float64}│                 0│
+    └────────────────────┴──────────────────────────┴──────────────────┘
+    Simple stats
+    solved: false
+    inconsistent: false
+    residuals: []
+    Aresiduals: []
+    κ₂(A): []
+    status: unknown"""
     @test strip.(split(chomp(showed), "\n")) == strip.(split(chomp(expected), "\n"))
   end
 end

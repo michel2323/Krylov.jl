@@ -3,7 +3,7 @@ CgLanczosShiftSolver, MinresQlpSolver, DqgmresSolver, DiomSolver, UsymlqSolver,
 UsymqrSolver, TricgSolver, TrimrSolver, TrilqrSolver, CgsSolver, BicgstabSolver,
 BilqSolver, QmrSolver, BilqrSolver, CglsSolver, CrlsSolver, CgneSolver, CrmrSolver,
 LslqSolver, LsqrSolver, LsmrSolver, LnlqSolver, CraigSolver, CraigmrSolver,
-GmresSolver, FomSolver, GpmrSolver
+GmresSolver, FomSolver, GpmrSolver, UsymlqrSolver
 
 export solve!, solution, nsolution, statistics, issolved, issolved_primal, issolved_dual
 
@@ -1484,6 +1484,51 @@ mutable struct GpmrSolver{T,S} <: KrylovSolver{T,S}
     n, m = size(A)
     S = ktypeof(b)
     GpmrSolver(n, m, memory, S)
+
+"""
+Type for storing the vectors required by the in-place version of USYMLQR.
+
+The outer constructors
+
+    solver = UsymlqrSolver(n, m, S)
+    solver = UsymlqrSolver(A, b)
+
+may be used in order to create these vectors.
+"""
+mutable struct UsymlqrSolver{T,S} <: KrylovSolver{T,S}
+  x       :: S
+  y       :: S
+  M⁻¹vₖ₋₁ :: S
+  M⁻¹vₖ   :: S
+  N⁻¹uₖ₋₁ :: S
+  N⁻¹uₖ   :: S
+  p       :: S
+  q       :: S
+  vₖ      :: S
+  uₖ      :: S
+  stats   :: SimpleStats{T}
+
+  function UsymlqrSolver(n, m, S)
+    T       = eltype(S)
+    x       = S(undef, n)
+    y       = S(undef, m)
+    M⁻¹vₖ₋₁ = S(undef, n)
+    M⁻¹vₖ   = S(undef, n)
+    N⁻¹uₖ₋₁ = S(undef, m)
+    N⁻¹uₖ   = S(undef, m)
+    p       = S(undef, m)
+    q       = S(undef, n)
+    vₖ      = S(undef, 0)
+    uₖ      = S(undef, 0)
+    stats = SimpleStats(false, false, T[], T[], T[], "unknown")
+    solver = new{T,S}(x, y, M⁻¹vₖ₋₁, M⁻¹vₖ, N⁻¹uₖ₋₁, N⁻¹uₖ, p, q, vₖ, uₖ, stats)
+    return solver
+  end
+
+  function UsymlqrSolver(A, b)
+    n, m = size(A)
+    S = ktypeof(b)
+    UsymlqrSolver(n, m, S)
   end
 end
 
@@ -1557,6 +1602,7 @@ for (KS, fun, nsol) in [
   (GmresSolver         , :gmres!     , 1)
   (FomSolver           , :fom!       , 1)
   (GpmrSolver          , :gpmr!      , 2)
+  (UsymlqrSolver       , :usymlqr!   , 2)
 ]
   @eval begin
     @inline solve!(solver :: $KS, args...; kwargs...) = $(fun)(solver, args...; kwargs...)

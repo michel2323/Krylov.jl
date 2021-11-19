@@ -526,6 +526,22 @@ function test_alloc()
   gpmr!(solver, Ao, Au, b, c, λ=1.0, μ=-1.0)  # warmup
   inplace_gpmr_bytes = @allocated gpmr!(solver, Ao, Au, b, c, λ=1.0, μ=-1.0)
   @test (VERSION < v"1.5") || (inplace_gpmr_bytes == 0)
+
+  # USYMLQR needs:
+  # - _ n-vectors: ...
+  # - _ m-vectors: ...
+  storage_usymlqr(n, m) = 0 * n + 0 * m
+  storage_usymlqr_bytes(n, m) = 8 * storage_usymlqr(n, m)
+
+  expected_usymlqr_bytes = storage_usymlqr_bytes(n, m)
+  usymlqr(Au, c, b)  # warmup
+  actual_usymlqr_bytes = @allocated usymlqr(Au, c, b)
+  @test expected_usymlqr_bytes ≤ actual_usymlqr_bytes ≤ 1.02 * expected_usymlqr_bytes
+
+  solver = UsymlqrSolver(Au, c)
+  usymlqr!(solver, Au, c, b)  # warmup
+  inplace_usymlqr_bytes = @allocated usymlqr!(solver, Au, c, b)
+  @test (VERSION < v"1.5") || (inplace_usymlqr_bytes == 0)
 end
 
 @testset "alloc" begin
