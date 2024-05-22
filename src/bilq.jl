@@ -172,7 +172,7 @@ kwargs_bilq = (:c, :transfer_to_bicg, :M, :N, :ldiv, :atol, :rtol, :itmax, :time
       @kaxpby!(n, one(FC), b, -one(FC), r₀)
     end
     if !MisI
-      mul!(p, M, r₀)
+      mulorldiv!(p, M, r₀, ldiv)
       r₀ = p
     end
 
@@ -356,7 +356,7 @@ kwargs_bilq = (:c, :transfer_to_bicg, :M, :N, :ldiv, :atol, :rtol, :itmax, :time
         μₖ = βₖ * (sₖ₋₁ * ζₖ₋₂ - cₖ₋₁ * cₖ * ζₖ₋₁) + αₖ * sₖ * ζₖ₋₁
         ωₖ = βₖ₊₁ * sₖ * ζₖ₋₁
         θₖ = conj(μₖ) * ωₖ * vₖᴴvₖ₊₁
-        rNorm_lq = sqrt(abs2(μₖ) * norm_vₖ^2 + abs2(ωₖ) * norm_vₖ₊₁^2 + 2 * real(θₖ))
+        rNorm_lq = sqrt(abs2(μₖ) * norm_vₖ^2 + abs2(ωₖ) * norm_vₖ₊₁^2 + 2 * abs(real(θₖ)))
       end
       history && push!(rNorms, rNorm_lq)
 
